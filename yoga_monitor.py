@@ -12,6 +12,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import json
 import os
+from telegram import Bot
+from telegram.error import TelegramError
 
 class YogaMonitor:
     def __init__(self):
@@ -26,6 +28,13 @@ class YogaMonitor:
         self.email_user = os.getenv('EMAIL_USER', '')
         self.email_pass = os.getenv('EMAIL_PASS', '')
         self.notify_email = os.getenv('NOTIFY_EMAIL', '')
+        
+        # Telegram configuration
+        self.telegram_token = os.getenv('TELEGRAM_BOT_TOKEN', '')
+        self.telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID', '')
+        self.telegram_bot = None
+        if self.telegram_token:
+            self.telegram_bot = Bot(token=self.telegram_token)
         
     def check_yoga_classes(self):
         """Check for available yoga classes"""
@@ -57,10 +66,32 @@ class YogaMonitor:
             print(f"Error checking classes: {e}")
             return None
     
+    def send_telegram_notification(self, available_classes):
+        """Send Telegram notification about available classes"""
+        if not self.telegram_bot or not self.telegram_chat_id:
+            return False
+            
+        try:
+            message = "🧘 *Yoga Classes Available!*\n\n"
+            for cls in available_classes:
+                message += f"• {cls['name']} - {cls['date']} at {cls['time']} ({cls['spots']} spots)\n"
+            
+            self.telegram_bot.send_message(
+                chat_id=self.telegram_chat_id,
+                text=message,
+                parse_mode='Markdown'
+            )
+            
+            print(f"Telegram notification sent at {datetime.now()}")
+            return True
+            
+        except TelegramError as e:
+            print(f"Error sending Telegram message: {e}")
+            return False
+    
     def send_email_notification(self, available_classes):
         """Send email notification about available classes"""
         if not self.email_user or not self.notify_email:
-            print("Email not configured")
             return False
             
         try:
@@ -82,12 +113,27 @@ class YogaMonitor:
             server.sendmail(self.email_user, self.notify_email, text)
             server.quit()
             
-            print(f"Notification sent at {datetime.now()}")
+            print(f"Email notification sent at {datetime.now()}")
             return True
             
         except Exception as e:
             print(f"Error sending email: {e}")
             return False
+    
+    def send_notifications(self, available_classes):
+        """Send notifications via all configured methods"""
+        notifications_sent = 0
+        
+        if self.send_telegram_notification(available_classes):
+            notifications_sent += 1
+            
+        if self.send_email_notification(available_classes):
+            notifications_sent += 1
+            
+        if notifications_sent == 0:
+            print("No notification methods configured")
+            
+        return notifications_sent > 0
     
     def run_check(self):
         """Run a single check for available classes"""
@@ -101,7 +147,7 @@ class YogaMonitor:
             
         if available_classes:
             print(f"Found {len(available_classes)} available classes!")
-            self.send_email_notification(available_classes)
+            self.send_notifications(available_classes)
         else:
             print("No available classes found")
     
