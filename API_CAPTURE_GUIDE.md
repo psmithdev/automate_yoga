@@ -141,9 +141,47 @@ print(response.status_code)
 print(response.json())
 ```
 
+## Certificate Pinning Solutions
+
+If the app uses certificate pinning (no traffic visible in proxy), try these methods:
+
+### Method A: Frida (Recommended for non-rooted phones)
+1. Install Frida tools:
+   ```bash
+   pip install frida-tools
+   ```
+
+2. Download and run Frida server on device:
+   ```bash
+   # Download frida-server for your Android architecture from GitHub
+   adb push frida-server /data/local/tmp/
+   adb shell "chmod 755 /data/local/tmp/frida-server"
+   adb shell "/data/local/tmp/frida-server &"
+   ```
+
+3. Use SSL Kill Switch:
+   ```bash
+   # Download ssl-kill-switch.js from GitHub
+   frida -U -l ssl-kill-switch.js -f com.jetts.app
+   ```
+
+4. Now run mitmproxy and use the app - traffic should be visible
+
+### Method B: Check for Web Version
+Many fitness apps have mobile web versions without certificate pinning:
+- Try logging into Jetts via mobile browser
+- Check if class booking works on web
+- Capture web API calls instead
+
+### Method C: APK Patching (Advanced)
+1. Extract APK using APK Extractor
+2. Decompile with apktool
+3. Find and modify certificate pinning code
+4. Recompile and install modified APK
+
 ## Security Notes
 
 - Keep API tokens and credentials secure
 - Don't commit real credentials to git
 - Use environment variables for sensitive data
-- The app may use certificate pinning - be prepared for SSL errors
+- Certificate pinning is a security feature - bypass only for legitimate automation
