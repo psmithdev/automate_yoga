@@ -1,0 +1,2 @@
+certificate pinning
+https://news.ycombinator.com/item?id=44704270
